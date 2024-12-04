@@ -32,9 +32,9 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
             -d '{
-              "model": "gpt-4o-mini",
+              "model": "gpt-3.5-turbo",
               "prompt": "Fix the compilation error in this Java code:\n\n'"$(cat Main.java)"'\n\nPlease add appropriate data types to the method parameters.",
-              "max_tokens": 150,
+              "max_tokens": 100,
               "temperature": 0.5
             }' > response.json
       - name: Update code with fixed version
