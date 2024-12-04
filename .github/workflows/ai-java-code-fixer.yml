@@ -20,8 +20,8 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '11'
-          distribution: 'temurin'
-
+          distribution: 'temurin'  # הוספנו את הפרמטר distribution
+          
       - name: Run the code linter
         run: |
           javac Main.java || echo "Compilation failed. Passing to OpenAI..."
