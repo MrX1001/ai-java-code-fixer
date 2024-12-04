@@ -1,6 +1,10 @@
 public class Main {
-    //Check AI 4 
     public static void main(String[] args) {
-        System.out.println("Hello, World!")
+        int result = add(5, 3);
+        System.out.println("The result is: " + result);
+    }
+
+    public static int add(a, b) {
+        return a + b;
     }
 }
