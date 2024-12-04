@@ -50,4 +50,4 @@ jobs:
           git config --global user.email "actions@github.com"
           git add Main.java
           git commit -m "Fix Java compilation issues using OpenAI"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
+          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
