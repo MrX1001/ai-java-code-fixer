@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '11'
-          distribution: 'adoptopenjdk'   # או את הגירסה המתאימה
+          distribution: 'temurin'  # השתמש בהפצה temurin
 
       - name: Run the code linter
         run: |
