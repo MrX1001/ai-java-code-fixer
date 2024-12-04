@@ -1,5 +1,4 @@
 name: Fix Java Compilation Issues with OpenAI
-
 on:
   push:
     branches:
@@ -7,44 +6,50 @@ on:
   pull_request:
     branches:
       - main
-
 jobs:
   fix-java-issue:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+      
       - name: Set up JDK 11
         uses: actions/setup-java@v2
         with:
           java-version: '11'
-          distribution: 'temurin'  # הוספנו את הפרמטר distribution
-
+          distribution: 'temurin'
+      
       - name: Run the code linter
         run: |
           javac src/Main.java || echo "Compilation failed. Passing to OpenAI..."
+      
       - name: Use OpenAI API to fix code
         id: fix_code
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          curl -X POST https://api.openai.com/v1/completions \
+          curl -X POST https://api.openai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d '{
               "model": "gpt-3.5-turbo",
-              "prompt": "Fix the compilation error in this Java code:\n\n'"$(cat Main.java)"'\n\nPlease add appropriate data types to the method parameters.",
-              "max_tokens": 100,
+              "messages": [
+                {"role": "system", "content": "You are a helpful assistant that fixes Java compilation errors."},
+                {"role": "user", "content": "Fix the compilation error in this Java code:\n\n'"$(cat src/Main.java)"'\n\nPlease add appropriate data types to the method parameters."}
+              ],
+              "max_tokens": 300,
               "temperature": 0.5
             }' > response.json
+      
       - name: Update code with fixed version
         run: |
-          FIXED_CODE=$(cat response.json | jq -r '.choices[0].text')
-          echo "$FIXED_CODE" > Main.java
+          FIXED_CODE=$(cat response.json | jq -r '.choices[0].message.content')
+          echo "$FIXED_CODE" > src/Main.java
+      
       - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
           git commit -m "Fix Java compilation issues using OpenAI"          
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
+          git push
