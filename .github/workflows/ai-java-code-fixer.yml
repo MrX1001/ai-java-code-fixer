@@ -1,60 +1,52 @@
-name: AI Java Code Fixer
+name: Fix Java Compilation Issues with OpenAI
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  analyze-and-fix-code:
+  fix-java-issue:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Prepare AI Request
-        run: |
-          echo '{
-            "model": "code-davinci-003",
-            "prompt": "Analyze and fix the following Java code:\\n\\n$(cat src/Main.java)",
-            "max_tokens": 2000,
-            "temperature": 0.2
-          }' > request.json
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
 
-      - name: Send Code to AI
+      - name: Run the code linter
         run: |
-          echo "Sending request to OpenAI API..."
-          curl -v -X POST \
-            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+          javac Main.java || echo "Compilation failed. Passing to OpenAI..."
+
+      - name: Use OpenAI API to fix code
+        id: fix_code
+        run: |
+          curl -X POST https://api.openai.com/v1/completions \
             -H "Content-Type: application/json" \
-            -d @request.json \
-            https://api.openai.com/v1/completions > response.json || exit 1
+            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+            -d '{
+              "model": "gpt-4",
+              "prompt": "Fix the compilation error in this Java code:\n\n'"$(cat Main.java)"'\n\nPlease add appropriate data types to the method parameters.",
+              "max_tokens": 150,
+              "temperature": 0.5
+            }' > response.json
 
-      - name: Check if response.json exists
+      - name: Update code with fixed version
         run: |
-          if [ ! -f response.json ]; then
-            echo "Error: response.json not found!"
-            exit 1
-          fi
+          FIXED_CODE=$(cat response.json | jq -r '.choices[0].text')
+          echo "$FIXED_CODE" > Main.java
 
-      - name: Apply Fixes
+      - name: Commit and push changes
         run: |
-          echo "Applying fixes to the code..."
-          python3 -c "
-import json
-with open('response.json', 'r') as f:
-    response = json.load(f)
-fixed_code = response['choices'][0]['text'].strip()
-with open('src/Main.java', 'w') as f:
-    f.write(fixed_code)
-print('Code fixes applied successfully.')
-          "
-
-      - name: Commit Changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "AI fixed Java code issues" || echo "No changes to commit."
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add Main.java
+          git commit -m "Fix Java compilation issues using OpenAI"
           git push
