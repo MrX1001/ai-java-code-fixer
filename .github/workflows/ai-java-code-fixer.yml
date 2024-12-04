@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '11'
-          distribution: 'temurin'   # הפצה 'temurin' עבור JDK 11
+          distribution: 'temurin'
 
       - name: Run the code linter
         run: |
@@ -48,7 +48,6 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
           git add Main.java
           git commit -m "Fix Java compilation issues using OpenAI"
-          git push origin main
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
