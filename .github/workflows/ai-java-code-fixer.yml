@@ -24,14 +24,23 @@ jobs:
 
       - name: Send Code to AI
         run: |
-          curl -X POST \
+          echo "Sending request to OpenAI API..."
+          curl -v -X POST \
             -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @request.json \
-            https://api.openai.com/v1/completions > response.json
+            https://api.openai.com/v1/completions > response.json || exit 1
+
+      - name: Check if response.json exists
+        run: |
+          if [ ! -f response.json ]; then
+            echo "Error: response.json not found!"
+            exit 1
+          fi
 
       - name: Apply Fixes
         run: |
+          echo "Applying fixes to the code..."
           python3 -c "
 import json
 with open('response.json', 'r') as f:
