@@ -17,16 +17,15 @@ jobs:
       uses: actions/setup-java@v2
       with:
         java-version: '11'
+        distribution: 'temurin' # הגדרה חובה
 
     - name: Read existing Java code
       id: read-code
       run: |
-        cat Main.java
         CODE=$(cat Main.java)
         echo "::set-output name=code::$CODE"
 
     - name: Fix code using OpenAI API
-      id: fix-code
       run: |
         curl -X POST "https://api.openai.com/v1/completions" \
         -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
@@ -41,7 +40,6 @@ jobs:
     - name: Save fixed code
       run: |
         cat fixed_code.json | jq -r '.choices[0].text' > Main.java
-        echo "Fixed code written to Main.java"
         cat Main.java
 
     - name: Compile and run fixed code
