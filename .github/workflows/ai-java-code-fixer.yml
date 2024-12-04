@@ -23,7 +23,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Read the source code and escape it for JSON
+          # Read the source code and escape it properly
           SOURCE_CODE=$(cat src/Main.java | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
           
           # Create the JSON payload file manually
@@ -45,21 +45,43 @@ jobs:
           }
           EOF
 
-          # Send the request using the manually created JSON file
-          curl -v -X POST https://api.openai.com/v1/chat/completions \
+          # Send the request with connection closing and error handling
+          response=$(curl -sS \
+            --max-time 30 \
+            -X POST https://api.openai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d @request.json > response.json
+            -d @request.json \
+            --write-out '\n%{http_code}' \
+            -o response.json)
+
+          # Extract HTTP status code
+          http_code=$(echo "$response" | tail -n1)
+          
+          # Check if request was successful
+          if [ "$http_code" -ne 200 ]; then
+            echo "Error: HTTP status code $http_code"
+            cat response.json
+            exit 1
+          fi
       
       - name: Process OpenAI Response
         run: |
-          # Extract the fixed code
+          # Extract the fixed code, removing any code block markers
           jq -r '.choices[0].message.content' response.json | sed 's/```java//g' | sed 's/```//g' > src/Main.java
+      
+      - name: Verify Fixed Code
+        run: |
+          # Attempt to compile the fixed code
+          if ! javac src/Main.java; then
+            echo "Compilation failed after AI fix"
+            exit 1
+          fi
       
       - name: Commit Changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add .
+          git add src/Main.java
           git commit -m "Fix Java compilation issues using OpenAI"
           git push
