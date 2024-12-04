@@ -24,7 +24,7 @@ jobs:
 
       - name: Run the code linter
         run: |
-          javac Main.java || echo "Compilation failed. Passing to OpenAI..."
+          javac src/Main.java || echo "Compilation failed. Passing to OpenAI..."
       - name: Use OpenAI API to fix code
         id: fix_code
         run: |
