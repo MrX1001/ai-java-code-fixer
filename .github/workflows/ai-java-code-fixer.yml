@@ -1,53 +1,58 @@
-name: Fix Java Compilation Issues with OpenAI
+name: Fix Java Code Automatically
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  fix-java-issue:
+  fix-code:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          java-version: '11'
-          distribution: 'temurin'  # הוספנו את הפרמטר distribution
-          
-      - name: Run the code linter
-        run: |
-          javac Main.java || echo "Compilation failed. Passing to OpenAI..."
+    - name: Set up Java
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
 
-      - name: Use OpenAI API to fix code
-        id: fix_code
-        run: |
-          curl -X POST https://api.openai.com/v1/completions \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
-            -d '{
-              "model": "gpt-4",
-              "prompt": "Fix the compilation error in this Java code:\n\n'"$(cat Main.java)"'\n\nPlease add appropriate data types to the method parameters.",
-              "max_tokens": 150,
-              "temperature": 0.5
-            }' > response.json
+    - name: Read existing Java code
+      id: read-code
+      run: |
+        cat Main.java
+        CODE=$(cat Main.java)
+        echo "::set-output name=code::$CODE"
 
-      - name: Update code with fixed version
-        run: |
-          FIXED_CODE=$(cat response.json | jq -r '.choices[0].text')
-          echo "$FIXED_CODE" > Main.java
+    - name: Fix code using OpenAI API
+      id: fix-code
+      run: |
+        curl -X POST "https://api.openai.com/v1/completions" \
+        -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+        -H "Content-Type: application/json" \
+        -d "{
+          \"model\": \"text-davinci-003\",
+          \"prompt\": \"Fix this Java code:\n${{ steps.read-code.outputs.code }}\",
+          \"max_tokens\": 300,
+          \"temperature\": 0.2
+        }" > fixed_code.json
 
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add Main.java
-          git commit -m "Fix Java compilation issues using OpenAI"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
+    - name: Save fixed code
+      run: |
+        cat fixed_code.json | jq -r '.choices[0].text' > Main.java
+        echo "Fixed code written to Main.java"
+        cat Main.java
+
+    - name: Compile and run fixed code
+      run: |
+        javac Main.java && java Main || echo "Compilation failed!"
+
+    - name: Commit and push fixed code
+      if: success()
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add Main.java
+        git commit -m "Fix Java code using OpenAI"
+        git push
