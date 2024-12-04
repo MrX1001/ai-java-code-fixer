@@ -45,9 +45,10 @@ jobs:
           echo "$FIXED_CODE" > Main.java
 
       - name: Commit and push changes
-        run: |
+          run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
           git add Main.java
-          git commit -m "Fix Java compilation issues using OpenAI"          
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/MrX1001/ai-java-code-fixer.git
+          git commit -m "Fix Java compilation issues using OpenAI"
+          git push origin main    
