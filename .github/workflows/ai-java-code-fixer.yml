@@ -1,4 +1,5 @@
-name: Fix Java Compilation Issues with OpenAI
+name: Use GitHub Copilot for Code Suggestions
+
 on:
   push:
     branches:
@@ -6,82 +7,54 @@ on:
   pull_request:
     branches:
       - main
+
 jobs:
-  fix-java-issue:
+  copilot-assist:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Set up JDK 11
         uses: actions/setup-java@v2
         with:
           java-version: '11'
           distribution: 'temurin'
-      
-      - name: Prepare OpenAI Request
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          # Read the source code and escape it properly
-          SOURCE_CODE=$(cat src/Main.java | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-          
-          # Create the JSON payload file manually
-          cat > request.json << EOF
-          {
-            "model": "gpt-3.5-turbo",
-            "messages": [
-              {
-                "role": "system", 
-                "content": "You are a Java code fixing assistant. Analyze the provided code and suggest a fix for any compilation issues."
-              },
-              {
-                "role": "user", 
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n${SOURCE_CODE}"
-              }
-            ],
-            "max_tokens": 300,
-            "temperature": 0.5
-          }
-          EOF
 
-          # Send the request with connection closing and error handling
+      - name: Get GitHub Copilot Suggestions (Mocked for Workflow)
+        run: |
+          # Sample steps that mock the Copilot functionality
+          echo "Calling Copilot API for code suggestions"
+          # Example of sending a request to GitHub's Copilot-like API (hypothetical)
           response=$(curl -sS \
             --max-time 30 \
-            -X POST https://api.openai.com/v1/chat/completions \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d @request.json \
-            --write-out '\n%{http_code}' \
-            -o response.json)
-
-          # Extract HTTP status code
-          http_code=$(echo "$response" | tail -n1)
+            -X POST https://api.github.com/copilot/suggest \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"input": "Fix this Java code"}')
           
-          # Check if request was successful
-          if [ "$http_code" -ne 200 ]; then
-            echo "Error: HTTP status code $http_code"
-            cat response.json
-            exit 1
-          fi
-      
-      - name: Process OpenAI Response
+          # Process the Copilot response
+          echo "Suggested Code: $response"
+
+      - name: Process Copilot's Response
         run: |
-          # Extract the fixed code, removing any code block markers
-          jq -r '.choices[0].message.content' response.json | sed 's/```java//g' | sed 's/```//g' > src/Main.java
-      
-      - name: Verify Fixed Code
+          # Assuming the response provides a fixed code or suggestion
+          echo "Processing suggestions from Copilot..."
+          # Here you would take the suggestion and apply it or modify the code.
+          
+          # Example of applying suggestions to the Java code.
+          jq -r '.suggested_code' response.json > src/Main.java
+
+      - name: Verify Code
         run: |
-          # Attempt to compile the fixed code
           if ! javac src/Main.java; then
-            echo "Compilation failed after AI fix"
+            echo "Compilation failed after Copilot suggestion"
             exit 1
           fi
-      
+
       - name: Commit Changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "Fix Java compilation issues using OpenAI"
+          git commit -m "Apply Copilot suggestions"
           git push
