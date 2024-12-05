@@ -1,4 +1,4 @@
-name: Analyze and Fix Java Issues Automatically
+name: Fix Java Compilation Issues with OpenAI
 on:
   push:
     branches:
@@ -7,58 +7,81 @@ on:
     branches:
       - main
 jobs:
-  analyze-and-fix:
+  fix-java-issue:
     runs-on: ubuntu-latest
     steps:
-      # שלב 1: שליפת הקוד מה-repository
       - name: Checkout code
         uses: actions/checkout@v2
-
-      # שלב 2: התקנת JDK 11
+      
       - name: Set up JDK 11
         uses: actions/setup-java@v2
         with:
           java-version: '11'
           distribution: 'temurin'
-
-      # שלב 3: הורדת PMD והוצאתו
-      - name: Download PMD
+      
+      - name: Prepare OpenAI Request
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          wget https://github.com/pmd/pmd/releases/download/pmd_releases/6.58.0/pmd-bin-6.58.0.zip
-          unzip pmd-bin-6.58.0.zip -d pmd
-          export PMD_PATH=$(pwd)/pmd/pmd-bin-6.58.0/bin
+          # Read the source code and escape it properly
+          SOURCE_CODE=$(cat src/Main.java | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
+          
+          # Create the JSON payload file manually
+          cat > request.json << EOF
+          {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+              {
+                "role": "system", 
+                "content": "You are a Java code fixing assistant. Analyze the provided code and suggest a fix for any compilation issues."
+              },
+              {
+                "role": "user", 
+                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n${SOURCE_CODE}"
+              }
+            ],
+            "max_tokens": 300,
+            "temperature": 0.5
+          }
+          EOF
 
-      # שלב 4: ניתוח הקוד בעזרת PMD
-      - name: Analyze code with PMD
+          # Send the request with connection closing and error handling
+          response=$(curl -sS \
+            --max-time 30 \
+            -X POST https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d @request.json \
+            --write-out '\n%{http_code}' \
+            -o response.json)
+
+          # Extract HTTP status code
+          http_code=$(echo "$response" | tail -n1)
+          
+          # Check if request was successful
+          if [ "$http_code" -ne 200 ]; then
+            echo "Error: HTTP status code $http_code"
+            cat response.json
+            exit 1
+          fi
+      
+      - name: Process OpenAI Response
         run: |
-          $PMD_PATH/run.sh pmd \
-          -d src \
-          -R category/java/errorprone.xml \
-          -f text > pmd-report.txt
-          cat pmd-report.txt
-
-      # שלב 5: הורדת Google Java Format
-      - name: Download Google Java Format
+          # Extract the fixed code, removing any code block markers
+          jq -r '.choices[0].message.content' response.json | sed 's/```java//g' | sed 's/```//g' > src/Main.java
+      
+      - name: Verify Fixed Code
         run: |
-          curl -L -o google-java-format.jar https://github.com/google/google-java-format/releases/download/v1.17.0/google-java-format-1.17.0-all-deps.jar
-
-      # שלב 6: תיקון הקוד בעזרת Google Java Format
-      - name: Fix code with Google Java Format
-        run: |
-          for file in $(find src -name "*.java"); do
-            java -jar google-java-format.jar --replace $file
-          done
-
-      # שלב 7: קומפילציה של הקוד המתוקן
-      - name: Compile Java Code
-        run: |
-          javac src/*.java
-
-      # שלב 8: ביצוע commit ושמירה של השינויים
+          # Attempt to compile the fixed code
+          if ! javac src/Main.java; then
+            echo "Compilation failed after AI fix"
+            exit 1
+          fi
+      
       - name: Commit Changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "Automatically fix Java issues"
+          git commit -m "Fix Java compilation issues using OpenAI"
           git push
