@@ -19,12 +19,14 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
+      # Download PMD and extract
       - name: Download PMD
         run: |
-          curl -L -o pmd-bin.zip https://github.com/pmd/pmd/releases/download/pmd_releases/6.56.0/pmd-bin-6.56.0.zip
+          curl -L -o pmd-bin.zip https://github.com/pmd/pmd/releases/download/pmd_releases/6.58.0/pmd-bin-6.58.0.zip
           unzip pmd-bin.zip -d pmd
-          export PMD_PATH=$(pwd)/pmd/pmd-bin-6.56.0/bin
+          export PMD_PATH=$(pwd)/pmd/pmd-bin-6.58.0/bin
 
+      # Analyze the code with PMD
       - name: Analyze code with PMD
         run: |
           $PMD_PATH/run.sh pmd \
@@ -33,20 +35,24 @@ jobs:
           -f text > pmd-report.txt
           cat pmd-report.txt
 
+      # Download Google Java Format
       - name: Download Google Java Format
         run: |
           curl -L -o google-java-format.jar https://github.com/google/google-java-format/releases/download/v1.17.0/google-java-format-1.17.0-all-deps.jar
 
+      # Fix code with Google Java Format (auto-format)
       - name: Fix code with Google Java Format
         run: |
           for file in $(find src -name "*.java"); do
             java -jar google-java-format.jar --replace $file
           done
 
+      # Compile Java Code
       - name: Compile Java Code
         run: |
           javac src/*.java
 
+      # Commit Changes if fixed automatically
       - name: Commit Changes
         run: |
           git config --global user.name "GitHub Actions"
