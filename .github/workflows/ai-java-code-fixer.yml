@@ -29,7 +29,7 @@ jobs:
           # Create the JSON payload file manually
           cat > request.json << EOF
           {
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4o-mini",
             "messages": [
               {
                 "role": "system", 
