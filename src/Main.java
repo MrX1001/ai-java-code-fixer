@@ -4,7 +4,7 @@ public class Main {
         int result = add(5, 3);
         System.out.println("The result is: " + result);
     }
-    public static int add(a, b) {
+    public static int add(int a, int b) {
         return a + b;
     }
 }
