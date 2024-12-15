@@ -29,6 +29,7 @@ jobs:
           fi
       
       - name: Prepare OpenAI Request
+        if: always() && failure() # This ensures this step only runs if the previous step failed
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -46,7 +47,7 @@ jobs:
               },
               {
                 "role": "user", 
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n${SOURCE_CODE}"
+                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\\n\\n${SOURCE_CODE}"
               }
             ],
             "max_tokens": 300,
