@@ -20,6 +20,14 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
+      - name: Verify Existing Code
+        run: |
+          # Attempt to compile the existing code
+          if javac src/Main.java; then
+            echo "Code compiled successfully, skipping OpenAI fix."
+            exit 0
+          fi
+      
       - name: Prepare OpenAI Request
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
