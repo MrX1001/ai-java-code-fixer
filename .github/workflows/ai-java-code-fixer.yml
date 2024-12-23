@@ -6,36 +6,26 @@ on:
   pull_request:
     branches:
       - main
-
 jobs:
   fix-java-issue:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+      
       - name: Set up JDK 11
         uses: actions/setup-java@v2
         with:
           java-version: '11'
           distribution: 'temurin'
-
-      - name: Verify Existing Code
-        run: |
-          # Attempt to compile the existing code
-          if javac src/Main.java; then
-            echo "Code compiled successfully, skipping OpenAI fix."
-            exit 0
-          fi
-
+      
       - name: Prepare OpenAI Request
-        if: always() && failure() # This ensures this step only runs if the previous step failed
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Read the source code and escape it properly
           SOURCE_CODE=$(cat src/Main.java | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-
+          
           # Create the JSON payload file manually
           cat > request.json << EOF
           {
@@ -47,7 +37,7 @@ jobs:
               },
               {
                 "role": "user", 
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\\n\\n${SOURCE_CODE}"
+                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n${SOURCE_CODE}"
               }
             ],
             "max_tokens": 300,
@@ -67,40 +57,19 @@ jobs:
 
           # Extract HTTP status code
           http_code=$(echo "$response" | tail -n1)
-
+          
           # Check if request was successful
           if [ "$http_code" -ne 200 ]; then
             echo "Error: HTTP status code $http_code"
             cat response.json
             exit 1
           fi
-
-      - name: Log OpenAI response (for debugging)
-        run: |
-          # Log the raw response for debugging
-          cat response.json
-
+      
       - name: Process OpenAI Response
         run: |
           # Extract the fixed code, removing any code block markers
-          FIXED_CODE=$(jq -r '.choices[0].message.content' response.json)
-
-          # Ensure the OpenAI response contains valid code
-          if [ -z "$FIXED_CODE" ]; then
-            echo "Error: No content in OpenAI response"
-            exit 1
-          fi
-
-          # Debugging: log the fixed code
-          echo "$FIXED_CODE" > fixed_code.txt
-          cat fixed_code.txt
-
-          # Remove any code block markers and write the fixed code back to Main.java
-          echo "$FIXED_CODE" | sed 's/```java//g' | sed 's/```//g' > src/Main.java
-
-      - name: Ensure file is writable
-        run: chmod 644 src/Main.java
-
+          jq -r '.choices[0].message.content' response.json | sed 's/```java//g' | sed 's/```//g' > src/Main.java
+      
       - name: Verify Fixed Code
         run: |
           # Attempt to compile the fixed code
@@ -108,41 +77,11 @@ jobs:
             echo "Compilation failed after AI fix"
             exit 1
           fi
-
+      
       - name: Commit Changes
-        if: github.event_name == 'push'
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
           git commit -m "Fix Java compilation issues using OpenAI"
           git push
-
-  verify-pull-request:
-    needs: fix-java-issue
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-
-      - name: Compile Java Code
-        run: |
-          # Attempt to compile the code to ensure it works
-          if ! javac src/Main.java; then
-            echo "Compilation failed"
-            exit 1
-          fi
-
-      - name: Comment on PR
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Java code successfully compiled." > comment.txt
-          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.txt
