@@ -36,7 +36,7 @@ jobs:
               },
               {
                 "role": "user",
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n" + $code
+                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n\($code)"
               }
             ],
             "max_tokens": 300,
