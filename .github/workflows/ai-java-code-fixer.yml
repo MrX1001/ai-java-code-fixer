@@ -23,29 +23,27 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Read the source code and escape it properly
-          SOURCE_CODE=$(cat src/Main.java | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
+          # Read the source code and properly escape it for JSON
+          SOURCE_CODE=$(cat src/Main.java | jq -Rs .)
           
-          # Create the JSON payload file manually
-          cat > request.json << EOF
-          {
+          # Create the JSON payload file using jq
+          jq -n --arg code "$SOURCE_CODE" '{
             "model": "gpt-3.5-turbo",
             "messages": [
               {
-                "role": "system", 
+                "role": "system",
                 "content": "You are a Java code fixing assistant. Analyze the provided code and suggest a fix for any compilation issues."
               },
               {
-                "role": "user", 
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n${SOURCE_CODE}"
+                "role": "user",
+                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n" + $code
               }
             ],
             "max_tokens": 300,
             "temperature": 0.5
-          }
-          EOF
+          }' > request.json
 
-          # Send the request with connection closing and error handling
+          # Send the request with proper error handling
           response=$(curl -sS \
             --max-time 30 \
             -X POST https://api.openai.com/v1/chat/completions \
@@ -68,7 +66,7 @@ jobs:
       - name: Process OpenAI Response
         run: |
           # Extract the fixed code, removing any code block markers
-          jq -r '.choices[0].message.content' response.json | sed 's/```java//g' | sed 's/```//g' > src/Main.java
+          jq -r '.choices[0].message.content' response.json | sed 's/java//g' | sed 's///g' > src/Main.java
       
       - name: Verify Fixed Code
         run: |
