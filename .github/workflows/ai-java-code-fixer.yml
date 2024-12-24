@@ -65,8 +65,8 @@ jobs:
       
       - name: Process OpenAI Response
         run: |
-          # Extract the fixed code, removing any code block markers
-          jq -r '.choices[0].message.content' response.json | sed 's/java//g' | sed 's///g' > src/Main.java
+          # Extract the fixed code and clean up code block markers if present
+          jq -r '.choices[0].message.content' response.json | sed '/^```java/d' | sed '/^```/d' > src/Main.java
       
       - name: Verify Fixed Code
         run: |
