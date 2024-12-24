@@ -32,11 +32,11 @@ jobs:
             "messages": [
               {
                 "role": "system",
-                "content": "You are a Java code fixing assistant. Analyze the provided code and suggest a fix for any compilation issues."
+                "content": "You are a Java code fixing assistant. Your response should ONLY contain the fixed Java code, with no explanations or markdown."
               },
               {
                 "role": "user",
-                "content": "Please fix the compilation errors in this Java source code. Provide the complete corrected source code:\n\n\($code)"
+                "content": "Fix the compilation errors in this Java code and respond with ONLY the corrected code:\n\n\($code)"
               }
             ],
             "max_tokens": 300,
@@ -65,8 +65,15 @@ jobs:
       
       - name: Process OpenAI Response
         run: |
-          # Extract the fixed code and clean up code block markers if present
-          jq -r '.choices[0].message.content' response.json | sed '/^```java/d' | sed '/^```/d' > src/Main.java
+          # Extract only the code content
+          jq -r '.choices[0].message.content' response.json > src/Main.java
+          
+          # Verify the file starts with 'public class'
+          if ! grep -q "^public class" src/Main.java; then
+            echo "Error: Invalid Java file format"
+            cat src/Main.java
+            exit 1
+          fi
       
       - name: Verify Fixed Code
         run: |
