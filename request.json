@@ -1,0 +1,15 @@
+{
+  "model": "gpt-3.5-turbo",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a Java code fixing assistant. Your response should ONLY contain the fixed Java code, with no explanations or markdown."
+    },
+    {
+      "role": "user",
+      "content": "Fix the compilation errors in this Java code and respond with ONLY the corrected code:\n\n\"public class Main {   \\r\\n    //Check12\\r\\n    public static void main(String[] args) {\\r\\n        int result = add(5, 3);\\r\\n        System.out.println(\\\"The result is: \\\" + result);\\r\\n    }\\r\\n    public static int add(a, b) {\\r\\n        return a + b;\\r\\n    }\\r\\n}\\r\\n\""
+    }
+  ],
+  "max_tokens": 300,
+  "temperature": 0.5
+}

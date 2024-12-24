@@ -1,0 +1,34 @@
+{
+  "id": "chatcmpl-AhuO40udhBKMsm7AyFbPw0xgK47M5",
+  "object": "chat.completion",
+  "created": 1735028220,
+  "model": "gpt-3.5-turbo-0125",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "public class Main {\n    //Check12\n    public static void main(String[] args) {\n        int result = add(5, 3);\n        System.out.println(\"The result is: \" + result);\n    }\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 138,
+    "completion_tokens": 67,
+    "total_tokens": 205,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "system_fingerprint": null
+}
